@@ -1,6 +1,21 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
+
+<!--***************CSS**************-->
 <style>
+
+body {
+  font-family: Arial, sans-serif;
+}
+
+.selectlist {
+	margin: 10px;
+	width: 240px;
+   height: 34px;
+   overflow: hidden;
+   background: url(new_arrow.png) no-repeat right #ddd;
+   border: 1px solid #ccc;
+}
 
 path {
   fill: none;
@@ -9,39 +24,296 @@ path {
   stroke-linecap: round;
 }
 
-.moosach { fill: #ddc; }
-.sendling { fill: #cdd; }
+.legend {
+  font-size: 12px;
+}
+
+div.tooltip {   
+  position: absolute;           
+  text-align: center;
+  vertical-align: center;          
+  width: 150px;                  
+  height: 30px;                 
+  padding: 2px;             
+  font-size: 12px;     
+  background: #ddd;
+  border: 1px;      
+  border-radius: 5px;           
+  pointer-events: none;         
+}        
 
 </style>
-<body>
-<script src="//d3js.org/d3.v3.min.js" charset="utf-8"></script>
-<script src="//d3js.org/topojson.v1.min.js"></script>
-<script>
 
+<body>
+<!--***************References**************-->
+<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script type="text/javascript" src="http://d3js.org/queue.v1.min.js"></script>
+<script src="http://d3js.org/topojson.v1.min.js"></script>
+
+<!--***************Auswahllisten**************-->
+<form action="javascript:update()">
+  <select id="select" class="selectlist "size="1" onchange="this.form.submit()">
+    <option value="1">Migrationshintergrundquote</option>
+    <option value="2">Alter der Mütter</option>
+    <option value="3">Alter</option>
+    <option value="4">Frauenanteil</option>
+  </select>
+  <select id="select_year" class="selectlist" size="1" onchange="this.form.submit()" >
+    <option value="1">2012</option>
+    <option value="2">2011</option>
+    <option value="3">2010</option>
+    <option value="4">2009</option>
+  </select>
+  <!--<input type="submit" id="update" value="Aktualisieren"/>-->
+</form>
+
+<script>
+/*************Variablen-Definitionen für die Projektion der Karte**************/
 var width = 700,
-    height = 700;
+	height = 500;
+
+var div = d3.select("body").append("div")   
+  .attr("class", "tooltip")               
+  .style("opacity", 0);
 
 var svg = d3.select("body").append("svg")
     .attr("width", width)
-    .attr("height", height);
+    .attr("height", height)
+    .style("margin", "10px auto");
 
 var projection = d3.geo.mercator()
     .center ([11.581981, 48.135125])
     .scale(60000)
     .translate([width / 2, height / 2]);
 
-var path = d3.geo.path()
-    .projection(projection);
 
-d3.json("immoscout.topojson", function(error, topology) {
-  if (error) return console.error(error);
 
-  svg.selectAll(".immoscout")
-    .data(topojson.feature(topology, topology.objects.immoscout).features)
+/*************Wird aufgerufen sobald die Seite geladen hat**************/
+function loaded() {
+
+//Variablen
+var path = d3.geo.path().projection(projection);
+var year;
+var file;
+var unit;
+var wert1,
+	wert2,
+	wert3,
+	wert4,
+	wert5;
+var color_domain;
+var ext_color_domain;
+var legend_labels;
+var color;
+
+//get_action und get_year ausführen
+document.getElementById("select").action = get_action();
+document.getElementById("select_year").action = get_year();
+
+//Variablen festlegen, je nachdem welcher Aspekt ausgewählt wurde
+function get_action() {
+	get_year();
+	var selectlist = document.getElementById("select")
+	var selected = selectlist.options[selectlist.selectedIndex].value;
+	console.log(selected);
+	switch (selected) {
+		case "1":
+			//console.log("case1");
+			wert1 = 30;
+			wert2 = 35;
+			wert3 = 40;
+			wert4 = 45;
+			wert5 = 50;
+			file = "migrationshintergrundquote.csv";
+			unit ="%";
+		break;
+
+		case "2":
+			//console.log("case2");
+			wert1 = 30;
+			wert2 = 31;
+			wert3 = 32;
+			wert4 = 33;
+			wert5 = 34;
+			file = "durchschnittsalterdermuetter.csv";
+			unit = " Jahre";
+		break;
+
+		case "3":
+			//console.log("case3");
+			wert1 = 39;
+			wert2 = 40.2;
+			wert3 = 41.4;
+			wert4 = 42.6;
+			wert5 = 43.8;
+			file = "altersdurchschnitt.csv";
+			unit = " Jahre";
+		break;
+
+		case "4":
+			//console.log("case4");
+			wert1 = 50;
+			wert2 = 50.5;
+			wert3 = 51;
+			wert4 = 51.5;
+			wert5 = 52;
+			file = "frauenanteil.csv";
+			unit = " % weiblich";
+		break;
+
+		default:
+			//console.log("default")
+			wert1 = 30;
+			wert2 = 35;
+			wert3 = 40;
+			wert4 = 45;
+			wert5 = 50;
+			file = "migrationshintergrundquote.csv";
+			unit ="%";
+				break;
+	}
+	
+}
+
+//Variablen festlegen, je nachdem welcher Aspekt ausgewählt wurde
+function get_year() {
+	var selectlist = document.getElementById("select_year")
+	var selected_year = selectlist.options[selectlist.selectedIndex].value;
+	switch (selected_year) {
+		case "1":
+			year = 2012;
+		break;
+
+		case "2":
+			year = 2011;
+		break;
+
+		case "3":
+			year = 2010;
+		break;
+
+		case "4":
+			year = 2009;
+		break;
+
+		default:
+			year = 2012;
+	}
+}
+
+  //Reading map file and data and call ready
+  queue()
+  .defer(d3.json, "immoscout.topojson")
+  .defer(d3.csv, file)
+  .await(ready);
+
+//wird ausgeführt, wenn alle Dateien geladen wurden
+ function ready(error, map, data) {
+ 	//Schwellenwerte und Farben definieren
+	color_domain = [wert1, wert2, wert3, wert4, wert5];
+	ext_color_domain = [0, wert1, wert2, wert3, wert4, wert5];
+	console.log(ext_color_domain);
+	legend_labels = ["< "+wert1, ""+wert1, ""+wert2, ""+wert3, ""+wert4, "> "+wert5];
+	color = d3.scale.threshold()
+	 .domain(color_domain)
+	 .range(["#85db46", "#ffe800", "#ffba00", "#ff7d73", "#ff4e40", "#ff1300"]);
+
+	//Variablen für Wert und Name der Region
+   var rateById = {};
+   var nameById = {};
+
+//geht durch die csv
+  data.forEach(function(d) {
+  	//filtert nach "gesamt"
+   	if(d.filter == "gesamt"){
+   		//filtert nach ausgewähltem Jahr
+	   	if (year == d.jahr) {
+	   		//Komma des Werts durch Punkt ersetzen
+	   		var quote = d.quote;
+	   		quote = quote.replace(/,/g, '.');
+	   		//Zahlen aus dem Regions-Namen löschen
+	   		var region = d.region;
+	   		region = region.replace(/[0-9]/g, '');
+	   		//Variablen festlegen
+	   		rateById[d.id] = +quote;
+	   		nameById[d.id] = region;
+	   	}
+	  	}
+	});
+
+
+/***************Drawing Chloropleth***********************/
+  svg.append("g")
+  .attr("class", "id")
+  .selectAll("path")
+  .data(topojson.feature(map, map.objects.immoscout).features)
   .enter().append("path")
-    .attr("class", function(d) { return "immoscout " + d.id; })
-    .attr("d", path);
-});
+  .attr("d", path)
+  .style("fill", function(d) {
+    return color(rateById[d.id]); 
+  })
+	.style("opacity", 0.7)
+
+//Tooltip
+  .on("mouseover", function(d) {
+    d3.select(this).transition().duration(300).style("opacity", 1);
+    div.transition().duration(300)
+    .style("opacity", 1)
+    div.text(nameById[d.id] + " : " + rateById[d.id] + unit)
+    .style("left", (d3.event.pageX) + "px")
+    .style("top", (d3.event.pageY -30) + "px");
+  })
+  .on("mouseout", function() {
+    d3.select(this)
+    .transition().duration(300)
+    .style("opacity", 0.7);
+    div.transition().duration(300)
+    .style("opacity", 0);
+  })
+
+//Adding legend
+var legend = svg.selectAll("g.legend")
+  .data(ext_color_domain)
+  .enter().append("g")
+  .attr("class", "legend");
+
+  var ls_w = 20, ls_h = 20;
+
+  legend.append("rect")
+  .attr("x", 20)
+  .attr("y", function(d, i){ return height - (i*ls_h) - 2*ls_h;})
+  .attr("width", ls_w)
+  .attr("height", ls_h)
+  .style("fill", function(d, i) { return color(d); })
+  .style("opacity", 0.7);
+
+  legend.append("text")
+  .attr("x", 50)
+  .attr("y", function(d, i){ return height - (i*ls_h) - ls_h - 4;})
+  .text(function(d, i){ return legend_labels[i]; });
+  console.log(legend_labels);
+
+};
+
+}
+/***************End of ready Function******************/
+
+
+/**************Is called when select list is updated****************/
+function update() {
+//Delete old legend and choropleth and call loaded function again
+var choropleth = svg.selectAll("g");
+var legend = svg.selectAll("g.legend");
+  legend.remove();
+  choropleth.remove();
+
+  loaded();
+  
+};
+
+/**************Call loaded function on window.onload*****************/
+window.onload = loaded;
+
 
 </script>
 </body>
