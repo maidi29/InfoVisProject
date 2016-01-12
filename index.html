@@ -58,6 +58,13 @@ div.tooltip {
     <option value="3">Alter</option>
     <option value="4">Frauenanteil</option>
   </select>
+  <select id="second_select" class="selectlist "size="1" onchange="this.form.submit()">
+  	<option value="0"></option>
+    <option value="1">Migrationshintergrundquote</option>
+    <option value="2">Alter der Mütter</option>
+    <option value="3">Alter</option>
+    <option value="4">Frauenanteil</option>
+  </select>
   <select id="select_year" class="selectlist" size="1" onchange="this.form.submit()" >
     <option value="1">2012</option>
     <option value="2">2011</option>
@@ -95,6 +102,7 @@ function loaded() {
 var path = d3.geo.path().projection(projection);
 var year;
 var file;
+var secondfile;
 var unit;
 var wert1,
 	wert2,
@@ -108,6 +116,7 @@ var color;
 
 //get_action und get_year ausführen
 document.getElementById("select").action = get_action();
+document.getElementById("second_select").action = get_second_action();
 document.getElementById("select_year").action = get_year();
 
 //Variablen festlegen, je nachdem welcher Aspekt ausgewählt wurde
@@ -175,6 +184,66 @@ function get_action() {
 	
 }
 
+function get_second_action() {
+	var selectlist = document.getElementById("second_select")
+	var selected = selectlist.options[selectlist.selectedIndex].value;
+	console.log(selected);
+	switch (selected) {
+		case "0":
+			secondfile = "";
+		break;
+		case "1":
+			if (file != "migrationshintergrundquote.csv") {
+				secondfile = "migrationshintergrundquote.csv";
+				wert1 = 0;
+				wert2 = 2.5;
+				wert3 = 5;
+				wert4 = 10;
+				wert5 = 12.5;
+			}
+			
+		break;
+
+		case "2":
+			if (file != "durchschnittsalterdermuetter.csv") {
+				secondfile = "durchschnittsalterdermuetter.csv";
+				wert1 = 0;
+				wert2 = 2.5;
+				wert3 = 5;
+				wert4 = 10;
+				wert5 = 12.5;
+			}
+		break;
+
+		case "3":
+			if (file != "altersdurchschnitt.csv") {
+				secondfile = "altersdurchschnitt.csv";
+				wert1 = 0;
+				wert2 = 2.5;
+				wert3 = 5;
+				wert4 = 10;
+				wert5 = 12.5;
+			}
+		break;
+
+		case "4":
+			if (file != "frauenanteil.csv") {
+				secondfile = "frauenanteil.csv";
+				wert1 = 0;
+				wert2 = 2.5;
+				wert3 = 5;
+				wert4 = 10;
+				wert5 = 12.5;
+			}
+		break;
+
+		default:
+			secondfile = "";
+		break;
+	}
+	
+}
+
 //Variablen festlegen, je nachdem welcher Aspekt ausgewählt wurde
 function get_year() {
 	var selectlist = document.getElementById("select_year")
@@ -205,10 +274,11 @@ function get_year() {
   queue()
   .defer(d3.json, "immoscout.topojson")
   .defer(d3.csv, file)
+  .defer(d3.csv, secondfile)
   .await(ready);
 
 //wird ausgeführt, wenn alle Dateien geladen wurden
- function ready(error, map, data) {
+ function ready(error, map, data, seconddata) {
  	//Schwellenwerte und Farben definieren
 	color_domain = [wert1, wert2, wert3, wert4, wert5];
 	ext_color_domain = [0, wert1, wert2, wert3, wert4, wert5];
@@ -224,21 +294,52 @@ function get_year() {
 
 //geht durch die csv
   data.forEach(function(d) {
-  	//filtert nach "gesamt"
-   	if(d.filter == "gesamt"){
-   		//filtert nach ausgewähltem Jahr
-	   	if (year == d.jahr) {
-	   		//Komma des Werts durch Punkt ersetzen
-	   		var quote = d.quote;
-	   		quote = quote.replace(/,/g, '.');
-	   		//Zahlen aus dem Regions-Namen löschen
-	   		var region = d.region;
-	   		region = region.replace(/[0-9]/g, '');
-	   		//Variablen festlegen
-	   		rateById[d.id] = +quote;
-	   		nameById[d.id] = region;
-	   	}
-	  	}
+  	if(secondfile != "") {
+  		seconddata.forEach(function(g) {
+  			//filtert nach "gesamt"
+  			if(d.filter == "gesamt" && g.filter == "gesamt"){
+		   		//filtert nach ausgewähltem Jahr
+			   	if (year == d.jahr && year == g.jahr) {
+			   	var dquote = d.quote;
+			   	var gquote = g.quote;
+		   		dquote = dquote.replace(/,/g, '.');
+		   		gquote = gquote.replace(/,/g, '.');
+		   		var quote;
+		   		if (dquote >= gquote) {
+		   			quote = dquote - gquote;
+		   		}
+		   		else {
+		   			quote = gquote - dquote;
+		   		}
+		   		//Zahlen aus dem Regions-Namen löschen
+		   		var region = d.region;
+		   		region = region.replace(/[0-9]/g, '');
+		   		//Variablen festlegen
+		   		rateById[d.id] = +quote;
+		   		nameById[d.id] = region;
+			   	}
+		   }
+  		})
+
+
+  	}
+  	else {
+	  	//filtert nach "gesamt"
+	   	if(d.filter == "gesamt"){
+	   		//filtert nach ausgewähltem Jahr
+		   	if (year == d.jahr) {
+		   		//Komma des Werts durch Punkt ersetzen
+		   		var quote = d.quote;
+		   		quote = quote.replace(/,/g, '.');
+		   		//Zahlen aus dem Regions-Namen löschen
+		   		var region = d.region;
+		   		region = region.replace(/[0-9]/g, '');
+		   		//Variablen festlegen
+		   		rateById[d.id] = +quote;
+		   		nameById[d.id] = region;
+		   	}
+		  	}
+	}
 	});
 
 
